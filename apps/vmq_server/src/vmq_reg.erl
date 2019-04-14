@@ -27,6 +27,7 @@
          delete_subscriptions/1,
          %% used in mqtt fsm handling
          publish/4,
+         publish_fun/4,
 
          %% used in :get_info/2
          get_session_pids/1,
@@ -325,6 +326,21 @@ publish(false, RegView, ClientId, #vmq_msg{mountpoint=MP,
             ok;
         false ->
             {error, not_ready}
+    end.
+
+publish_fun(ClientId, {Topic, Qos}, Payload, Opts) ->
+    wait_til_ready(),
+    Msg = #vmq_msg{
+        routing_key=Topic,
+        mountpoint=maps:get(mountpoint, Opts, ""),
+        payload=Payload,
+        msg_ref=vmq_mqtt_fsm_util:msg_ref(),
+        qos = Qos,
+        dup=maps:get(dup, Opts, false),
+        retain=maps:get(retain, Opts, false),
+        sg_policy=maps:get(shared_subscription_policy, Opts, SGPolicyConfig)
+    },
+    publish(false, vmq_config:get_env(default_reg_view, vmq_reg_trie), ClientId, Msg)
     end.
 
 maybe_set_expiry_ts(#{p_message_expiry_interval := ExpireAfter}) ->
